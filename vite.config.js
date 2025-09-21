@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"), // <- use path.resolve
+      "@": path.resolve(__dirname, "src"),
     },
   },
   server: {
@@ -14,8 +14,8 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:5001",
         changeOrigin: true,
-        historyApiFallback: true,
       },
     },
+    historyApiFallback: true, // <- move it here
   },
 });
