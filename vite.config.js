@@ -7,7 +7,7 @@ export default defineConfig({
   resolve: {
     alias: [{ find: "@", replacement: "/src" }],
   },
-  base: "/tastoria/",   // 👈 IMPORTANT: match your deploy path
+  base: "/",   // 👈 IMPORTANT: match your deploy path
   server: {
     proxy: {
       '/api': {
