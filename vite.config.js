@@ -1,19 +1,18 @@
+// vite.config.js
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  plugins: [react()],
-  base: '/Tastoria-cicd/',        // <--- ADD this line (use your repo name)
   resolve: {
     alias: [{ find: "@", replacement: "/src" }],
   },
+  base: "/tastoria/",   // 👈 IMPORTANT: match your deploy path
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'http://localhost:5000',
         changeOrigin: true,
-        historyApiFallback: true,
       },
     },
   },
