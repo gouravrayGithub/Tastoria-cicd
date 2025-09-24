@@ -51,39 +51,61 @@ pipeline {
     }
 
     stage('Publish to gh-pages') {
-      steps {
-        withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_PAT')]) {
-          sh '''
-            set -e
-            REPO_PATH=${REPO_URL#https://github.com/}
-            REPO_PATH=${REPO_PATH%.git}
-            TMP_DIR=$(mktemp -d)
+  steps {
+    withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_PAT')]) {
+      sh '''
+        set -euo pipefail
+        echo "Publishing ${BUILD_DIR} to ${GH_PAGES_BRANCH}"
 
-            if git ls-remote --exit-code --heads "https://github.com/${REPO_PATH}" "${GH_PAGES_BRANCH}"; then
-              git clone --branch "${GH_PAGES_BRANCH}" "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${TMP_DIR}"
-            else
-              git clone "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${TMP_DIR}"
-              cd "${TMP_DIR}"
-              git checkout --orphan "${GH_PAGES_BRANCH}"
-              git rm -rf .
-              cd -
-            fi
+        REPO_PATH=${REPO_URL#https://github.com/}
+        REPO_PATH=${REPO_PATH%.git}
+        TMP_DIR=$(mktemp -d)
 
-            rsync -a --delete ${BUILD_DIR}/ "${TMP_DIR}/"
-            cd "${TMP_DIR}"
-            git config user.email "jenkins@${REPO_PATH#*/}"
-            git config user.name "jenkins"
-            git add -A
-            if git diff --staged --quiet; then
-              echo "No changes to publish"
-            else
-              git commit -m "Publish to ${GH_PAGES_BRANCH} from Jenkins build ${BUILD_NUMBER}"
-              git push "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${GH_PAGES_BRANCH}"
-            fi
-          '''
-        }
-      }
+        # If gh-pages exists, clone that branch; otherwise create a new repo and branch
+        if git ls-remote --exit-code --heads "https://github.com/${REPO_PATH}" "${GH_PAGES_BRANCH}"; then
+          echo "Cloning existing ${GH_PAGES_BRANCH} branch..."
+          git clone --branch "${GH_PAGES_BRANCH}" "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${TMP_DIR}"
+        else
+          echo "Branch ${GH_PAGES_BRANCH} doesn't exist — creating new empty repo..."
+          mkdir -p "${TMP_DIR}"
+          cd "${TMP_DIR}"
+          git init
+          git checkout -b "${GH_PAGES_BRANCH}"
+          # set an empty initial commit so push works
+          git commit --allow-empty -m "Initialize ${GH_PAGES_BRANCH} branch"
+          git remote add origin "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git"
+          git push -u origin "${GH_PAGES_BRANCH}"
+          cd -
+        fi
+
+        # Copy build output into tmp repo (preserve permissions)
+        rsync -a --delete "${WORKSPACE}/${BUILD_DIR}/" "${TMP_DIR}/"
+
+        # Ensure we are inside the git repo and commit changes
+        cd "${TMP_DIR}"
+        # sanity check
+        if [ ! -d .git ]; then
+          echo ".git missing in ${TMP_DIR} — aborting" >&2
+          exit 1
+        fi
+
+        git config user.email "jenkins@${REPO_PATH#*/}"
+        git config user.name "jenkins"
+
+        # Commit only when there are changes
+        git add -A
+        if git status --porcelain | grep .; then
+          git commit -m "Publish to ${GH_PAGES_BRANCH} from Jenkins build ${BUILD_NUMBER}"
+          git push "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${GH_PAGES_BRANCH}"
+          echo "Publish complete."
+        else
+          echo "No changes to publish."
+        fi
+      '''
     }
+  }
+}
+
   }
 
   post {
