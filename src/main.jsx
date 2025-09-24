@@ -1,24 +1,14 @@
+// src/main.jsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { HashRouter } from 'react-router-dom';
+import App from './App';
+import './index.css'; // adjust if your css import path differs
 
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
-import { ThemeProvider } from "@material-tailwind/react";
-import { AuthProvider } from "./context/AuthContext";
-import App from "./App";
-import { Toaster } from 'react-hot-toast';
-import "./styles/fonts.css";
-import "./firebase/config.js"; // Add the .js extension
-import "../public/css/tailwind.css";
-
-ReactDOM.createRoot(document.getElementById("root")).render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <App />
-          <Toaster position="top-center" />
-        </AuthProvider>
-      </ThemeProvider>
-    </BrowserRouter>
+    <HashRouter>
+      <App />
+    </HashRouter>
   </React.StrictMode>
 );
