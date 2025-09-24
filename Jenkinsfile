@@ -5,7 +5,7 @@ pipeline {
     BUILD_DIR = 'dist'
     REPO_URL  = 'https://github.com/gouravrayGithub/Tastoria-cicd.git'
     GH_PAGES_BRANCH = 'gh-pages'
-    // Prepend Homebrew node path so Jenkins job finds node/npm on your mac agent
+    // If needed, ensure node path (kept from your earlier change)
     PATH = "/opt/homebrew/bin:${env.PATH}"
   }
 
@@ -31,22 +31,22 @@ pipeline {
 
     stage('Install & Build') {
       steps {
-        withCredentials([string(credentialsId: 'frontend-api-url', variable: 'VITE_API_URL')]) {
-          sh '''
-            set -e
-            echo "VITE_API_URL=${VITE_API_URL}"
-            export VITE_API_URL="${VITE_API_URL}"
+        sh '''
+          set -e
+          # Use the VITE_API_URL if present in the environment, otherwise fallback to localhost
+          echo "VITE_API_URL (before): ${VITE_API_URL}"
+          export VITE_API_URL="${VITE_API_URL:-http://localhost:5000}"
+          echo "Using VITE_API_URL=${VITE_API_URL}"
 
-            # verify node again just before build
-            which node
-            node -v
-            npm -v
+          # verify node/npm
+          which node
+          node -v
+          npm -v
 
-            npm ci --no-audit --prefer-offline
-            npm run build
-            ls -la ${BUILD_DIR}
-          '''
-        }
+          npm ci --no-audit --prefer-offline
+          npm run build
+          ls -la ${BUILD_DIR}
+        '''
       }
     }
 
