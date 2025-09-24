@@ -50,7 +50,7 @@ pipeline {
       }
     }
 
-    stage('Publish to gh-pages') {
+   stage('Publish to gh-pages') {
   steps {
     withCredentials([string(credentialsId: 'github-pat', variable: 'GITHUB_PAT')]) {
       sh '''
@@ -61,7 +61,6 @@ pipeline {
         REPO_PATH=${REPO_PATH%.git}
         TMP_DIR=$(mktemp -d)
 
-        # If gh-pages exists, clone that branch; otherwise create a new repo and branch
         if git ls-remote --exit-code --heads "https://github.com/${REPO_PATH}" "${GH_PAGES_BRANCH}"; then
           echo "Cloning existing ${GH_PAGES_BRANCH} branch..."
           git clone --branch "${GH_PAGES_BRANCH}" "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${TMP_DIR}"
@@ -71,19 +70,16 @@ pipeline {
           cd "${TMP_DIR}"
           git init
           git checkout -b "${GH_PAGES_BRANCH}"
-          # set an empty initial commit so push works
           git commit --allow-empty -m "Initialize ${GH_PAGES_BRANCH} branch"
           git remote add origin "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git"
           git push -u origin "${GH_PAGES_BRANCH}"
           cd -
         fi
 
-        # Copy build output into tmp repo (preserve permissions)
-        rsync -a --delete "${WORKSPACE}/${BUILD_DIR}/" "${TMP_DIR}/"
+        # Sync build output into temp repo but exclude .git so it isn't removed
+        rsync -a --delete --exclude='.git' "${WORKSPACE}/${BUILD_DIR}/" "${TMP_DIR}/"
 
-        # Ensure we are inside the git repo and commit changes
         cd "${TMP_DIR}"
-        # sanity check
         if [ ! -d .git ]; then
           echo ".git missing in ${TMP_DIR} — aborting" >&2
           exit 1
@@ -92,9 +88,8 @@ pipeline {
         git config user.email "jenkins@${REPO_PATH#*/}"
         git config user.name "jenkins"
 
-        # Commit only when there are changes
         git add -A
-        if git status --porcelain | grep .; then
+        if git status --porcelain | grep -q .; then
           git commit -m "Publish to ${GH_PAGES_BRANCH} from Jenkins build ${BUILD_NUMBER}"
           git push "https://${GITHUB_PAT}@github.com/${REPO_PATH}.git" "${GH_PAGES_BRANCH}"
           echo "Publish complete."
